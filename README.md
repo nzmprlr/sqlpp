@@ -11,7 +11,7 @@ sqlpp is a sql(`mySQL and Postgres`) database connection wrapper to cache prepar
  ### Will transform to:
  mysql => `select * from bar where b = ? or a in (?,?) or b = ? or b in (?,?,?)`<br> postgres => `select * from bar where b = $1 or a in ($2,$3) or b = $4 or b in ($5,$6,$7)`
  ### With args:
- `[]interface{1, 2, 3, 4, "5", "6", "7"}`
+ `[]interface{}{1, 2, 3, 4, "5", "6", "7"}`
 <br>
 ## Usage
 
@@ -28,7 +28,16 @@ if err != nil {
     panic(err)
 }
 
-r, _err_ := db.Query("select * from foo where id = ?", db.Args(1), func(r *sql.Rows) (interface{}, error) {
+r, _ := db.Query("select * from foo", nil, func(r *sql.Rows) (interface{}, error) {
+    var a int
+    err := r.Scan(&a)
+    return a, err
+})
+
+fmt.Println(r)
+// output: [1,2,3,4]
+
+r, _ = db.Query("select * from foo where id = ?", db.Args(1), func(r *sql.Rows) (interface{}, error) {
     var a int
     err := r.Scan(&a)
     return a, err
@@ -38,14 +47,14 @@ fmt.Println(r)
 // output: [1]
 
 
-r, _err_ := db.Query("select * from foo where id in (?)", db.Args([]int{1,2,3}), func(r *sql.Rows) (interface{}, error) {
+r, _ = db.Query("select * from foo where id in (?)", db.Args([]int{2,3}), func(r *sql.Rows) (interface{}, error) {
     var a int
     err := r.Scan(&a)
     return a, err
 })
 
 fmt.Println(r)
-// output: [1,2,3]
+// output: [2,3]
 ```
 
 ## License
