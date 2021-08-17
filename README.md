@@ -1,6 +1,6 @@
 # sqlpp [![GoDoc](https://godoc.org/github.com/nzmprlr/sqlpp?status.svg)](http://godoc.org/github.com/nzmprlr/sqlpp) [![Go Report Card](https://goreportcard.com/badge/github.com/nzmprlr/sqlpp)](https://goreportcard.com/report/github.com/nzmprlr/sqlpp) [![Coverage](http://gocover.io/_badge/github.com/nzmprlr/sqlpp)](http://gocover.io/github.com/nzmprlr/sqlpp)
 
-sqlpp is a sql(`mySQL and Postgres`) database connection wrapper to cache prepared statements by transforming query (`"... in (?)...", []`) to use with array arguments.
+sqlpp is a sql(`MySQL and PostgreSQL`) database connection wrapper to cache prepared statements by transforming queries (`"...in (?)...", []`) to use with array arguments.
 
 ## Query Transformation
 ### Given query:
@@ -9,16 +9,16 @@ sqlpp is a sql(`mySQL and Postgres`) database connection wrapper to cache prepar
  `db.Args(1, []int{2,3}, 4, []string{"5", "6", "7"})` 
  
  ### Will transform to:
- mysql => `select * from bar where b = ? or a in (?,?) or b = ? or b in (?,?,?)`<br> postgres => `select * from bar where b = $1 or a in ($2,$3) or b = $4 or b in ($5,$6,$7)`
+ mysql => `select * from bar where b = ? or a in (?,?) or b = ? or b in (?,?,?)`<br> postgresql => `select * from bar where b = $1 or a in ($2,$3) or b = $4 or b in ($5,$6,$7)`
  ### With args:
  `[]interface{}{1, 2, 3, 4, "5", "6", "7"}`
 <br>
 ## Usage
 
 ``` go
-/* conn, _ := sql.Open("mysql", "root:root@tcp(127.0.0.1:3306)/foo")
+/* conn, _ := sql.Open("mysql", "username:password@tcp(127.0.0.1:3306)/foo")
 db := sqlpp.NewMysql(conn) */
-conn, _ := sql.Open("postgres", "postgres://postgres:root@localhost:5432/foo?sslmode=disable")
+conn, _ := sql.Open("postgres", "postgres://username:password@localhost:5432/foo?sslmode=disable")
 db := sqlpp.NewPostgres(conn)
 
 defer db.Close()

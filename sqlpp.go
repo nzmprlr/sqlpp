@@ -3,8 +3,9 @@ package sqlpp
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"errors"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -40,7 +41,6 @@ func (sqlpp *DB) transform(query string, args []interface{}) (string, []interfac
 		indices := []int{}
 		tempQuery := query
 		for ; i != -1; i = strings.LastIndex(tempQuery, "(?)") {
-
 			indices = append(indices, i)
 			tempQuery = tempQuery[:i]
 		}
@@ -78,9 +78,9 @@ func (sqlpp *DB) transform(query string, args []interface{}) (string, []interfac
 	}
 
 	if sqlpp.postgres {
-		l := strings.Count(query, "?")
-		for i := 1; i <= l; i++ {
-			query = strings.Replace(query, "?", fmt.Sprintf("$%d", i), 1)
+		count := strings.Count(query, "?")
+		for i := 1; i <= count; i++ {
+			query = strings.Replace(query, "?", "$"+strconv.Itoa(i), 1)
 		}
 	}
 
@@ -106,8 +106,10 @@ func (sqlpp *DB) prepare(ctx context.Context, query string, args []interface{}) 
 type Scanner func(*sql.Rows) (interface{}, error)
 
 func (sqlpp *DB) parse(rows *sql.Rows, scanner Scanner) ([]interface{}, error) {
-	if rows == nil || scanner == nil {
-		return nil, sql.ErrNoRows
+	if rows == nil {
+		return nil, errors.New("sqlpp: nil rows")
+	} else if scanner == nil {
+		return nil, errors.New("sqlpp: nil scanner")
 	}
 
 	results := []interface{}{}
@@ -119,10 +121,6 @@ func (sqlpp *DB) parse(rows *sql.Rows, scanner Scanner) ([]interface{}, error) {
 		}
 
 		results = append(results, scanned)
-	}
-
-	if len(results) == 0 {
-		return nil, sql.ErrNoRows
 	}
 
 	return results, nil
@@ -143,21 +141,20 @@ func (sqlpp *DB) Close() error {
 	return sqlpp.DB.Close()
 }
 
-func (sqlpp *DB) Exec(query string, args ...interface{}) error {
+func (sqlpp *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return sqlpp.ExecContext(context.Background(), query, args...)
 }
-func (sqlpp *DB) ExecContext(ctx context.Context, query string, args ...interface{}) error {
+func (sqlpp *DB) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
 	stmt, query, args, err := sqlpp.prepare(ctx, query, args)
 	if err != nil {
 		if isMysqlPrepareNotSupported(err) {
-			_, err = sqlpp.DB.ExecContext(ctx, query, args...)
+			return sqlpp.DB.ExecContext(ctx, query, args...)
 		}
 
-		return err
+		return nil, err
 	}
 
-	_, err = stmt.ExecContext(ctx, args...)
-	return err
+	return stmt.ExecContext(ctx, args...)
 }
 
 func (sqlpp *DB) QueryRow(query string, args []interface{}, dest ...interface{}) error {
