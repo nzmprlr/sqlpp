@@ -9,5 +9,5 @@ var (
 )
 
 func isMysqlPrepareNotSupported(err error) bool {
-	return strings.HasPrefix(err.Error(), mysqlErrPrefixPrepareNotSupported)
+	return err != nil && strings.HasPrefix(err.Error(), mysqlErrPrefixPrepareNotSupported)
 }

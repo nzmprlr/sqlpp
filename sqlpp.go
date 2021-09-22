@@ -10,11 +10,16 @@ import (
 	"sync"
 )
 
-func NewPostgres(db *sql.DB) *DB {
+var (
+	ErrNilRows    = errors.New("sqlpp: nil rows")
+	ErrNilScanner = errors.New("sqlpp: nil scanner")
+)
+
+func NewPostgreSQL(db *sql.DB) *DB {
 	return new(db, true)
 }
 
-func NewMysql(db *sql.DB) *DB {
+func NewMySQL(db *sql.DB) *DB {
 	return new(db, false)
 }
 
@@ -90,12 +95,22 @@ func (sqlpp *DB) transform(query string, args []interface{}) (string, []interfac
 func (sqlpp *DB) prepare(ctx context.Context, query string, args []interface{}) (*sql.Stmt, string, []interface{}, error) {
 	query, args = sqlpp.transform(query, args)
 
-	if stmt, ok := sqlpp.stmts.Load(query); ok {
-		return stmt.(*sql.Stmt), query, args, nil
+	if loaded, ok := sqlpp.stmts.Load(query); ok {
+		if stmt, o := loaded.(*sql.Stmt); o {
+			return stmt, query, args, nil
+		} else if err, o := loaded.(error); o {
+			return nil, query, args, err
+		} else {
+			sqlpp.stmts.Delete(query)
+		}
 	}
 
 	stmt, err := sqlpp.PrepareContext(ctx, query)
 	if err != nil {
+		if isMysqlPrepareNotSupported(err) {
+			sqlpp.stmts.Store(query, err)
+		}
+
 		return nil, query, args, err
 	}
 
@@ -107,9 +122,9 @@ type Scanner func(*sql.Rows) (interface{}, error)
 
 func (sqlpp *DB) parse(rows *sql.Rows, scanner Scanner) ([]interface{}, error) {
 	if rows == nil {
-		return nil, errors.New("sqlpp: nil rows")
+		return nil, ErrNilRows
 	} else if scanner == nil {
-		return nil, errors.New("sqlpp: nil scanner")
+		return nil, ErrNilScanner
 	}
 
 	results := []interface{}{}
@@ -132,7 +147,9 @@ func (sqlpp *DB) Args(args ...interface{}) []interface{} {
 
 func (sqlpp *DB) Close() error {
 	sqlpp.stmts.Range(func(key, value interface{}) bool {
-		value.(*sql.Stmt).Close()
+		if stmt, o := value.(*sql.Stmt); o {
+			stmt.Close()
+		}
 
 		return true
 	})

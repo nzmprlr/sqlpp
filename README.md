@@ -9,17 +9,17 @@ sqlpp is a sql(`MySQL and PostgreSQL`) database connection wrapper to cache prep
  `db.Args(1, []int{2,3}, 4, []string{"5", "6", "7"})` 
  
  ### Will transform to:
- mysql => `select * from bar where b = ? or a in (?,?) or b = ? or b in (?,?,?)`<br> postgresql => `select * from bar where b = $1 or a in ($2,$3) or b = $4 or b in ($5,$6,$7)`
+ MySQL => `select * from bar where b = ? or a in (?,?) or b = ? or b in (?,?,?)`<br> PostgreSQL => `select * from bar where b = $1 or a in ($2,$3) or b = $4 or b in ($5,$6,$7)`
  ### With args:
  `[]interface{}{1, 2, 3, 4, "5", "6", "7"}`
 <br>
 ## Usage
 
 ``` go
-/* conn, _ := sql.Open("mysql", "username:password@tcp(127.0.0.1:3306)/foo")
-db := sqlpp.NewMysql(conn) */
-conn, _ := sql.Open("postgres", "postgres://username:password@localhost:5432/foo?sslmode=disable")
-db := sqlpp.NewPostgres(conn)
+/* conn, _ := sql.Open("mysql", "username:password@tcp(host:port)/database")
+db := sqlpp.NewMySQL(conn) */
+conn, _ := sql.Open("postgres", "postgres://username:password@host:port/database?sslmode=disable")
+db := sqlpp.NewPostgreSQL(conn)
 
 defer db.Close()
 
